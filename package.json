@@ -1,15 +1,19 @@
 {
-  "name": "webrtc",
+  "name": "@danmaid/webrtc",
+  "private": true,
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "node-dev --respawn src/dev.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "danmaid",
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/node16": "^1.0.2",
+    "node-dev": "^7.2.0",
+    "ts-node": "^10.7.0",
     "typescript": "^4.6.2"
   },
   "workspaces": [

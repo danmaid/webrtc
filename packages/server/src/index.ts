@@ -1,6 +1,6 @@
 import express from 'express'
 
-const app = express()
+export const app = express()
 app.use(express.json())
 
 const channels = new Map<string, unknown>()
@@ -15,8 +15,4 @@ app.get('/channels/:id', ({ params: { id } }, res) => {
 
 app.put('/channels/:id', ({ params: { id }, body }, res) => {
   res.json(channels.set(id, body))
-})
-
-app.listen(6900, () => {
-  console.log('http://localhost:6900/channels')
 })
