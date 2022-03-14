@@ -1,24 +1,22 @@
 <template>
   <div>
+    <grouping-switch></grouping-switch>
     チャンネル一覧
-    <template v-for="channel of [1, 2, 3]">
-      <div>
-        チャンネル {{ channel }}
-        <div>
-          プレビュー
-          <video></video>
-        </div>
-        <div>
-          audio
-          <template v-for="audio of [1, 2, 3]"></template>
-        </div>
-        <div>
-          video
-          <template v-for="video of [1, 2, 3]"></template>
-        </div>
-      </div>
+    <template v-for="channel of [{ label: '1', kind: 'audioinput', cast: false, preview: true }]">
+      <label>{{ channel.label }}</label>
+      <cast-switch v-model="channel.cast"></cast-switch>
+      <preview-switch v-model="channel.preview"></preview-switch>
+      <microphone-icon v-if="channel.kind === 'audioinput'"></microphone-icon>
+      <speaker-icon v-if="channel.kind === 'audiooutput'"></speaker-icon>
+      <camera-icon v-if="channel.kind === 'videoinput'"></camera-icon>
+      <template v-if="channel.preview">
+        <audio v-if="channel.kind.startsWith('audio')"></audio>
+        <video v-if="channel.kind.startsWith('video')"></video>
+      </template>
     </template>
+    <button>add screen</button>
   </div>
+  <hr />
   <div v-for="device of enumerated">{{ device }}</div>
   <hr />
   <div v-for="device of devices">{{ device }}</div>
