@@ -1,17 +1,50 @@
 <template>
   <div>
-    <grouping-switch></grouping-switch>
+    <grouping-switch v-model="grouping"></grouping-switch>
     チャンネル一覧
-    <template v-for="channel of [{ label: '1', kind: 'audioinput', cast: false, preview: true }]">
-      <label>{{ channel.label }}</label>
-      <cast-switch v-model="channel.cast"></cast-switch>
-      <preview-switch v-model="channel.preview"></preview-switch>
-      <microphone-icon v-if="channel.kind === 'audioinput'"></microphone-icon>
-      <speaker-icon v-if="channel.kind === 'audiooutput'"></speaker-icon>
-      <camera-icon v-if="channel.kind === 'videoinput'"></camera-icon>
-      <template v-if="channel.preview">
-        <audio v-if="channel.kind.startsWith('audio')"></audio>
-        <video v-if="channel.kind.startsWith('video')"></video>
+    <template v-if="grouping">
+      <template
+        v-for="group of [
+          {
+            id: '123',
+            channels: [
+              { label: '1', kind: 'audioinput', cast: false, preview: true },
+            ],
+          },
+        ]"
+      >
+        <template v-for="channel of group.channels">
+          <label>{{ channel.label }}</label>
+          <cast-switch v-model="channel.cast"></cast-switch>
+          <preview-switch v-model="channel.preview"></preview-switch>
+          <microphone-icon
+            v-if="channel.kind === 'audioinput'"
+          ></microphone-icon>
+          <speaker-icon v-if="channel.kind === 'audiooutput'"></speaker-icon>
+          <camera-icon v-if="channel.kind === 'videoinput'"></camera-icon>
+          <template v-if="channel.preview">
+            <audio v-if="channel.kind.startsWith('audio')"></audio>
+            <video v-if="channel.kind.startsWith('video')"></video>
+          </template>
+        </template>
+      </template>
+    </template>
+    <template v-if="!grouping">
+      <template
+        v-for="channel of [
+          { label: '1', kind: 'audioinput', cast: false, preview: true },
+        ]"
+      >
+        <label>{{ channel.label }}</label>
+        <cast-switch v-model="channel.cast"></cast-switch>
+        <preview-switch v-model="channel.preview"></preview-switch>
+        <microphone-icon v-if="channel.kind === 'audioinput'"></microphone-icon>
+        <speaker-icon v-if="channel.kind === 'audiooutput'"></speaker-icon>
+        <camera-icon v-if="channel.kind === 'videoinput'"></camera-icon>
+        <template v-if="channel.preview">
+          <audio v-if="channel.kind.startsWith('audio')"></audio>
+          <video v-if="channel.kind.startsWith('video')"></video>
+        </template>
       </template>
     </template>
     <button>add screen</button>
@@ -44,6 +77,7 @@ export default defineComponent({
     return {
       enumerated: [] as MediaDeviceInfo[],
       streams: [] as { groupId: string; stream: MediaStream }[],
+      grouping: true,
     }
   },
   computed: {
