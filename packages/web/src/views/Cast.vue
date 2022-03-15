@@ -13,13 +13,14 @@
           },
         ]"
       >
-      <template v-for="channel of group.channels">
-        <CastChannel v-model="channel.cast" />
+        <template v-for="channel of group.channels">
+          <CastChannel v-model="channel.cast"></CastChannel>
+        </template>
       </template>
     </template>
     <template v-if="!grouping">
       <template v-for="channel of []">
-        <CastChannel v-model="channel.cast" />
+        <CastChannel v-model="channel.cast"></CastChannel>
       </template>
     </template>
     <button>add screen</button>

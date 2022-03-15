@@ -110,8 +110,10 @@ export default defineComponent({
       )
     },
     connect() {
-      console.log('connect')
       this.peer = new RTCPeerConnection()
+      this.peer.createOffer().then((v) => {
+        console.log(v)
+      })
       this.peer.addEventListener('negotiationneeded', async function () {
         console.log('negotiationneeded')
         const offer = await this.createOffer()
