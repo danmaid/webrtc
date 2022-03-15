@@ -6,13 +6,14 @@
       <template
         v-for="group of [
           {
-            id: '123',
+            label: '123',
             channels: [
               { label: '1', kind: 'audioinput', cast: false, preview: true },
             ],
           },
         ]"
       >
+        <CastChannelList />
         <template v-for="channel of group.channels">
           <label>{{ channel.label }}</label>
           <cast-switch v-model="channel.cast"></cast-switch>
