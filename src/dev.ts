@@ -1,5 +1,5 @@
 import express from 'express'
-import { app } from '@dm-webrtc/server'
+import { app } from '@dm-webrtc/server/src'
 import { createServer as createViteServer } from 'vite'
 import path from 'path'
 
