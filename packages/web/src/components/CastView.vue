@@ -118,13 +118,17 @@ export default defineComponent({
     async sendOffer() {
       const offer = await this.connection.createOffer()
       console.log('offer', offer)
+      await this.connection.setLocalDescription(offer)
       const { sdp } = offer
       if (!sdp) return
       const headers = new Headers({ 'Content-Type': 'application/sdp' })
-      const body = offer.sdp
-      const res = await fetch('/channels', { method: 'POST', body, headers })
+      const body = sdp
+      const res = await fetch('/channels/1', { method: 'PUT', body, headers })
       const { ok, status, statusText } = res
       this.res = { ok, status, statusText }
+      const answer = await res.text()
+      console.log('answer', answer)
+      this.connection.setRemoteDescription({ type: 'answer', sdp: answer })
     },
     addTrack(v: MediaDeviceInfo) {
       const stream = this.getStream(v)
@@ -132,6 +136,7 @@ export default defineComponent({
       stream.getTracks().map((v) => this.connection.addTrack(v))
       this.senders = this.connection.getSenders()
       this.sendOffer()
+      console.log(stream.getTracks())
     },
     removeCast(device: MediaDeviceInfo) {
       const stream = this.streams.find((v) => v.deviceId === device.deviceId)
