@@ -18,10 +18,10 @@ app.use(express.json())
 
 const sfu = new SFU()
 
-const signalers = new Map<string, WebSocketServer>()
+const signals = new Map<string, WebSocketServer>()
 
-app.get('/signalers', (req, res) => {
-  res.json(Array.from(signalers))
+app.get('/signals', (req, res) => {
+  res.json(Array.from(signals))
 })
 
 function addSignal(path: string): WebSocketServer {
@@ -34,21 +34,21 @@ function addSignal(path: string): WebSocketServer {
       })
     })
   })
-  signalers.set(path, wss)
+  signals.set(path, wss)
   return wss
 }
 
-const casters = new Map<string, unknown>()
+const clients = new Map<string, unknown>()
 
-app.get('/casters', (req, res) => {
+app.get('/clients', (req, res) => {
   res.json(Array.from(casters))
 })
 
-app.post('/casters', async (req, res) => {
+app.post('/clients', async (req, res) => {
   const id = uuid()
-  addSignal(`/casters/${id}`)
-  await sfu.addCaster(`ws://localhost:${getPort()}/casters/${id}`)
-  casters.set(id, req.body)
+  addSignal(`/clients/${id}`)
+  await sfu.addClient(`ws://localhost:${getPort()}/clients/${id}`, req.body?.tracks)
+  clients.set(id, req.body)
   res.json(id)
 })
 

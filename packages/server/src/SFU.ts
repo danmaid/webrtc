@@ -24,12 +24,13 @@ export class SFU {
       })
   }
 
-  async addCaster(signaler: string) {
+  async addClient(signalUrl: string, tracks:  string[]) {
     const page = await this.page
-    await page.evaluate(async () => {
+    await page.evaluate(async (signalUrl, trackIds) => {
       const peer = new RTCPeerConnection()
       peer.addEventListener('track', (ev) => tracks.push(ev.track))
-      const ws = new WebSocket(signaler)
+      tracks.filter(id => trackIds.includes(id)).forEach(v => peer.addTrack(v))
+      const ws = new WebSocket(signalUrl)
       ws.addEventListener('message', async (ev) => {
         const { description } = JSON.parse(ev.data)
         if (description) {
@@ -40,33 +41,7 @@ export class SFU {
           }
         }
       })
-    }, signaler)
-  }
-
-  async getAnswer(offer: string) {
-    const page = await this.page
-    return page.evaluate(async (offer: string) => {
-      const peer = new RTCPeerConnection()
-      peer.addEventListener('track', (ev) => {
-        console.log('ontrack!!')
-        tracks.push(ev.track)
-      })
-      await peer.setRemoteDescription({ type: 'offer', sdp: offer })
-      const { sdp } = await peer.createAnswer()
-      return sdp
-    }, offer)
-  }
-  async addListener(offer: string) {
-    const page = await this.page
-    return page.evaluate(async (offer: string) => {
-      const peer = new RTCPeerConnection()
-      tracks.forEach((v) => peer.addTrack(v))
-      console.log(peer.localDescription?.sdp)
-      await peer.setRemoteDescription({ type: 'offer', sdp: offer })
-      const answer = await peer.createAnswer()
-      await peer.setLocalDescription(answer)
-      return answer.sdp
-    }, offer)
+    }, signalUrl, tracks)
   }
 
   async getTracks() {
