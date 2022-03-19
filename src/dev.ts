@@ -1,17 +1,13 @@
-import express from 'express'
-import { app } from '@dm-webrtc/server/src'
+import { app, server } from '@dm-webrtc/server/src'
 import { createServer as createViteServer } from 'vite'
 import path from 'path'
-
-const server = express()
-server.use(app)
 
 async function create() {
   const vite = await createViteServer({
     root: path.resolve(__dirname, '../packages/web'),
     server: { middlewareMode: 'html' },
   })
-  server.use(vite.middlewares)
+  app.use(vite.middlewares)
 }
 
 create().then(() => {

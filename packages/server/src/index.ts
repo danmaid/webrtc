@@ -24,14 +24,25 @@ app.get('/signals', (req, res) => {
   res.json(Array.from(signals))
 })
 
+server.on('upgrade', (req, socket, head) => {
+  const url = req.url
+  if (!url) return socket.destroy()
+  const wss = signals.get(url)
+  if (!wss) return socket.destroy()
+  wss.handleUpgrade(req, socket, head, (ws, req) => {
+    wss.emit('connection', ws, req)
+  })
+})
+
 function addSignal(path: string): WebSocketServer {
-  const wss = new WebSocketServer({ server, path })
-  wss.on('connection', (socket, req) => {
-    socket.on('message', (data) => {
+  const wss = new WebSocketServer({ noServer: true })
+  wss.on('connection', (ws, req) => {
+    ws.on('message', (data, binary) => {
       wss.clients.forEach((v) => {
-        if (v === socket) return
-        v.send(data)
+        if (v === ws) return
+        v.send(data, { binary })
       })
+      console.log(data.toString())
     })
   })
   signals.set(path, wss)
@@ -41,15 +52,23 @@ function addSignal(path: string): WebSocketServer {
 const clients = new Map<string, unknown>()
 
 app.get('/clients', (req, res) => {
-  res.json(Array.from(casters))
+  res.json(Array.from(clients))
 })
 
 app.post('/clients', async (req, res) => {
   const id = uuid()
   addSignal(`/clients/${id}`)
-  await sfu.addClient(`ws://localhost:${getPort()}/clients/${id}`, req.body?.tracks)
+  await sfu.addClient(
+    `ws://localhost:${getPort()}/clients/${id}`,
+    req.body?.tracks
+  )
   clients.set(id, req.body)
   res.json(id)
+})
+
+app.get('/tracks', async (req, res) => {
+  const track = await sfu.getTracks()
+  res.json(track)
 })
 
 // const channels = new Map<

@@ -1,14 +1,15 @@
 <template>
   <div>watch</div>
   <div>
-    <div v-for="channel of channels">
-      <pre>{{ channel[1] }}</pre>
-    </div>
-    <button @click="getChannels">GET Channels</button>
+    {{ tracks }}
+    <button @click="getTracks">GET Tracks</button>
   </div>
   <div>
     <button @click="watch">WATCH</button>
-    <video :srcObject.prop="stream" autoplay></video>
+    <video v-if="go" :srcObject.prop="stream" autoplay controls></video>
+  </div>
+  <div>
+    <button @click="check">check</button>
   </div>
 </template>
 
@@ -18,9 +19,11 @@ import { defineComponent } from 'vue'
 export default defineComponent({
   data() {
     return {
-      channels: [],
+      tracks: [] as { id: string }[],
+      peer: new RTCPeerConnection(),
       peers: [],
       stream: new MediaStream(),
+      go: false,
     }
   },
   watch: {
@@ -39,26 +42,44 @@ export default defineComponent({
     //   })
     // },
   },
+  mounted() {
+    this.peer.addEventListener('track', (ev) => {
+      console.log('track')
+      this.stream.addTrack(ev.track)
+      console.log(this.stream)
+      console.log(this.stream.getTracks())
+      this.go = true
+    })
+  },
   methods: {
-    async getChannels() {
-      this.channels = await fetch('/channels').then((r) => r.json())
+    async getTracks() {
+      this.tracks = await fetch('/tracks').then((r) => r.json())
     },
     async watch() {
-      const peer = new RTCPeerConnection()
-      peer.addEventListener('track', (ev) => {
-        console.log('track!!')
-        this.stream.addTrack(ev.track)
+      const body = JSON.stringify({ tracks: this.tracks.map((v) => v.id) })
+      const id = await fetch('/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).then((v) => v.json())
+      const ws = new WebSocket(`ws://${location.host}/clients/${id}`)
+      ws.addEventListener('message', async (ev) => {
+        const { description } = JSON.parse(ev.data)
+        if (description) {
+          await this.peer.setRemoteDescription(description)
+          if (description.type === 'offer') {
+            await this.peer.setLocalDescription()
+            ws.send(JSON.stringify({ description: this.peer.localDescription }))
+          }
+        }
       })
-      const offer = await peer.createOffer()
-      await peer.setLocalDescription(offer)
-      const answer = await fetch('/channels/1/listeners/2', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/sdp' },
-        body: offer.sdp,
-      }).then((r) => r.text())
-      console.log('ANSWER!!', answer)
-      await peer.setRemoteDescription({ type: 'answer', sdp: answer })
-      console.log(peer.remoteDescription)
+      this.peer.addEventListener('negotiationneeded', async () => {
+        await this.peer.setLocalDescription()
+        ws.send(JSON.stringify({ description: this.peer.localDescription }))
+      })
+    },
+    check() {
+      console.log(this.peer)
     },
   },
 })

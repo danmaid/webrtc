@@ -24,24 +24,43 @@ export class SFU {
       })
   }
 
-  async addClient(signalUrl: string, tracks:  string[]) {
+  async addClient(signalUrl: string, trackIds: string[]) {
     const page = await this.page
-    await page.evaluate(async (signalUrl, trackIds) => {
-      const peer = new RTCPeerConnection()
-      peer.addEventListener('track', (ev) => tracks.push(ev.track))
-      tracks.filter(id => trackIds.includes(id)).forEach(v => peer.addTrack(v))
-      const ws = new WebSocket(signalUrl)
-      ws.addEventListener('message', async (ev) => {
-        const { description } = JSON.parse(ev.data)
-        if (description) {
-          await peer.setRemoteDescription(description)
-          if (description.type === 'offer') {
-            await peer.setLocalDescription()
-            ws.send(JSON.stringify({ description: peer.localDescription }))
+    await page.evaluate(
+      async (signalUrl, trackIds) => {
+        const peer = new RTCPeerConnection()
+        peer.addEventListener('track', (ev) => {
+          console.log('track')
+          tracks.push(ev.track)
+        })
+        const ws = new WebSocket(signalUrl)
+        ws.addEventListener('message', async (ev) => {
+          const { description, candidate } = JSON.parse(ev.data)
+          if (description) {
+            await peer.setRemoteDescription(description)
+            if (description.type === 'offer') {
+              await peer.setLocalDescription()
+              ws.send(JSON.stringify({ description: peer.localDescription }))
+            }
           }
-        }
-      })
-    }, signalUrl, tracks)
+          if (candidate) {
+            await peer.addIceCandidate(candidate)
+          }
+        })
+        peer.addEventListener('negotiationneeded', async () => {
+          await peer.setLocalDescription()
+          ws.send(JSON.stringify({ description: peer.localDescription }))
+        })
+        peer.addEventListener('icecandidate', ({ candidate }) => {
+          ws.send(JSON.stringify({ candidate }))
+        })
+        tracks
+          .filter((v) => trackIds?.includes(v.id))
+          .forEach((v) => peer.addTrack(v))
+      },
+      signalUrl,
+      trackIds
+    )
   }
 
   async getTracks() {

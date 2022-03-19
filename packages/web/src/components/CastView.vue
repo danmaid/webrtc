@@ -1,6 +1,8 @@
 <template>
   <div>
     <div>配信</div>
+    {{ id }}
+    <button @click="connect">connect</button>
     <div>
       <button @click="sendOffer">offer</button>
       {{ res }}
@@ -55,9 +57,10 @@ export default defineComponent({
     return {
       enumerated: [] as MediaDeviceInfo[],
       streams: [] as { deviceId: string; stream: MediaStream | undefined }[],
-      connection: new RTCPeerConnection(),
+      peer: new RTCPeerConnection(),
       senders: [] as RTCRtpSender[],
       res: undefined as any,
+      id: undefined,
     }
   },
   computed: {
@@ -88,13 +91,40 @@ export default defineComponent({
   },
   async mounted() {
     this.enumerated = await navigator.mediaDevices.enumerateDevices()
-    this.senders = this.connection.getSenders()
-    this.connection.addEventListener('track', () => {
+    this.senders = this.peer.getSenders()
+    this.peer.addEventListener('track', () => {
       console.log('on track')
-      this.senders = this.connection.getSenders()
+      this.senders = this.peer.getSenders()
     })
   },
   methods: {
+    async connect() {
+      const id = await fetch('/clients', { method: 'POST' }).then((v) =>
+        v.json()
+      )
+      const ws = new WebSocket(`ws://${location.host}/clients/${id}`)
+      ws.addEventListener('message', async (ev) => {
+        const { description, candidate } = JSON.parse(ev.data)
+        if (description) {
+          await this.peer.setRemoteDescription(description)
+          if (description.type === 'offer') {
+            await this.peer.setLocalDescription()
+            ws.send(JSON.stringify({ description: this.peer.localDescription }))
+          }
+        }
+        if (candidate) {
+          await this.peer.addIceCandidate(candidate)
+        }
+      })
+      this.peer.addEventListener('negotiationneeded', async () => {
+        await this.peer.setLocalDescription()
+        ws.send(JSON.stringify({ description: this.peer.localDescription }))
+      })
+      this.peer.addEventListener('icecandidate', ({ candidate }) => {
+        ws.send(JSON.stringify({ candidate }))
+      })
+      this.id = id
+    },
     getStream(device: MediaDeviceInfo): MediaStream | undefined {
       const stream = this.streams.find((v) => v.deviceId === device.deviceId)
       return stream?.stream
@@ -115,27 +145,11 @@ export default defineComponent({
       }))
       this.streams = await Promise.all(streams)
     },
-    async sendOffer() {
-      const offer = await this.connection.createOffer()
-      console.log('offer', offer)
-      await this.connection.setLocalDescription(offer)
-      const { sdp } = offer
-      if (!sdp) return
-      const headers = new Headers({ 'Content-Type': 'application/sdp' })
-      const body = sdp
-      const res = await fetch('/channels/1', { method: 'PUT', body, headers })
-      const { ok, status, statusText } = res
-      this.res = { ok, status, statusText }
-      const answer = await res.text()
-      console.log('answer', answer)
-      this.connection.setRemoteDescription({ type: 'answer', sdp: answer })
-    },
     addTrack(v: MediaDeviceInfo) {
       const stream = this.getStream(v)
       if (!stream) return []
-      stream.getTracks().map((v) => this.connection.addTrack(v))
-      this.senders = this.connection.getSenders()
-      this.sendOffer()
+      stream.getTracks().map((v) => this.peer.addTrack(v))
+      this.senders = this.peer.getSenders()
       console.log(stream.getTracks())
     },
     removeCast(device: MediaDeviceInfo) {
@@ -150,7 +164,7 @@ export default defineComponent({
           console.warn('track not found.', track)
           return
         }
-        this.connection.removeTrack(this.senders[index])
+        this.peer.removeTrack(this.senders[index])
       })
       this.sendOffer()
     },
