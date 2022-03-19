@@ -6,7 +6,7 @@
   </div>
   <div>
     <button @click="watch">WATCH</button>
-    <video v-if="go" :srcObject.prop="stream" autoplay controls></video>
+    <video :srcObject.prop="stream" autoplay controls></video>
   </div>
   <div>
     <button @click="check">check</button>
@@ -44,11 +44,7 @@ export default defineComponent({
   },
   mounted() {
     this.peer.addEventListener('track', (ev) => {
-      console.log('track')
       this.stream.addTrack(ev.track)
-      console.log(this.stream)
-      console.log(this.stream.getTracks())
-      this.go = true
     })
   },
   methods: {
@@ -76,6 +72,9 @@ export default defineComponent({
       this.peer.addEventListener('negotiationneeded', async () => {
         await this.peer.setLocalDescription()
         ws.send(JSON.stringify({ description: this.peer.localDescription }))
+      })
+      this.peer.addEventListener('icecandidate', ({ candidate }) => {
+        ws.send(JSON.stringify({ candidate }))
       })
     },
     check() {
