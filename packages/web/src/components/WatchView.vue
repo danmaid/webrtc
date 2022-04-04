@@ -1,84 +1,44 @@
 <template>
   <div>watch</div>
-  <div>
-    {{ tracks }}
-    <button @click="getTracks">GET Tracks</button>
-  </div>
-  <div>
-    <button @click="watch">WATCH</button>
-    <video :srcObject.prop="stream" autoplay controls></video>
-  </div>
-  <div>
-    <button @click="check">check</button>
+  <button @click="fetch">fetch</button>
+  <div style="display: flex; flex-wrap: wrap">
+    <div v-for="{ id, connection } of items">
+      <div>{{ id }}</div>
+      <button @click="watch(id)">watch</button>
+      <template v-if="connection">
+        <video :srcObject.prop="connection.watch()" autoplay controls></video>
+      </template>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { Connection } from '../Connection'
 
 export default defineComponent({
   data() {
     return {
-      tracks: [] as { id: string }[],
-      peer: new RTCPeerConnection(),
-      peers: [],
-      stream: new MediaStream(),
-      go: false,
+      casts: [] as [string][],
+      connections: new Map<string, Connection>(),
     }
   },
-  watch: {
-    // channels(v: [string, RTCSessionDescription][]) {
-    //   v.map(async ([channel, desc]) => {
-    //     const peer = new RTCPeerConnection()
-    //     await peer.setRemoteDescription(desc)
-    //     const answer = await peer.createAnswer()
-    //     console.log(answer)
-    //     await peer.setLocalDescription(answer)
-    //     fetch(`/channels/${channel}`, {
-    //       method: 'POST',
-    //       headers: { 'Content-Type': 'application/json' },
-    //       body: JSON.stringify(answer),
-    //     })
-    //   })
-    // },
-  },
-  mounted() {
-    this.peer.addEventListener('track', (ev) => {
-      this.stream.addTrack(ev.track)
-    })
+  computed: {
+    items(): { id: string; connection?: Connection }[] {
+      return this.casts.map(([id]) => ({
+        id,
+        connection: this.connections.get(id),
+      }))
+    },
   },
   methods: {
-    async getTracks() {
-      this.tracks = await fetch('/tracks').then((r) => r.json())
+    async fetch() {
+      this.casts = await fetch('/casts').then((v) => v.json())
     },
-    async watch() {
-      const body = JSON.stringify({ tracks: this.tracks.map((v) => v.id) })
-      const id = await fetch('/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      }).then((v) => v.json())
-      const ws = new WebSocket(`ws://${location.host}/clients/${id}`)
-      ws.addEventListener('message', async (ev) => {
-        const { description } = JSON.parse(ev.data)
-        if (description) {
-          await this.peer.setRemoteDescription(description)
-          if (description.type === 'offer') {
-            await this.peer.setLocalDescription()
-            ws.send(JSON.stringify({ description: this.peer.localDescription }))
-          }
-        }
-      })
-      this.peer.addEventListener('negotiationneeded', async () => {
-        await this.peer.setLocalDescription()
-        ws.send(JSON.stringify({ description: this.peer.localDescription }))
-      })
-      this.peer.addEventListener('icecandidate', ({ candidate }) => {
-        ws.send(JSON.stringify({ candidate }))
-      })
-    },
-    check() {
-      console.log(this.peer)
+    async watch(id: string) {
+      const res = await fetch(`/casts/${id}/watchers`, { method: 'POST' })
+      const { path } = await res.json()
+      this.connections.set(id, new Connection(path))
     },
   },
 })

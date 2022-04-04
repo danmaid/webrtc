@@ -2,7 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', component: () => import('./components/HomeView.vue') },
-  { path: '/cast', component: () => import('./components/CastView.vue') },
+  { path: '/cast', component: () => import('./components/CastView2.vue') },
   { path: '/watch', component: () => import('./components/WatchView.vue') },
 ]
 
